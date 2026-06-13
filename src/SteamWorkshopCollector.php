@@ -172,10 +172,25 @@ final class SteamWorkshopCollector
             $publishedItems = $decoded['response']['publishedfiledetails'] ?? [];
 
             foreach ($publishedItems as $item) {
-                if ((int) ($item['consumer_app_id'] ?? 0) !== KF2_WSMC_APP_ID) {
+                if ((int) ($item['result'] ?? 0) !== 1) {
                     continue;
                 }
-                if ((int) ($item['result'] ?? 0) !== 1) {
+
+                // Steam иногда не возвращает consumer_app_id для части элементов,
+                // поэтому фильтрация только по этому полю может отбрасывать всё.
+                // Уже на этапе browse мы собираем id из appid=232090, поэтому
+                // здесь используем мягкую проверку по доступным app id полям.
+                $consumerAppId = (int) ($item['consumer_app_id'] ?? 0);
+                $consumerAppIdAlt = (int) ($item['consumer_appid'] ?? 0);
+                $creatorAppId = (int) ($item['creator_app_id'] ?? 0);
+
+                $hasAppIdMarker = $consumerAppId > 0 || $consumerAppIdAlt > 0 || $creatorAppId > 0;
+                $isKf2ByAppId =
+                    $consumerAppId === KF2_WSMC_APP_ID ||
+                    $consumerAppIdAlt === KF2_WSMC_APP_ID ||
+                    $creatorAppId === KF2_WSMC_APP_ID;
+
+                if ($hasAppIdMarker && !$isKf2ByAppId) {
                     continue;
                 }
 
@@ -255,6 +270,39 @@ final class SteamWorkshopCollector
                     'id' => $id,
                     'name' => $name,
                 ];
+            }
+        }
+
+        // Fallback для новой SSR-разметки Steam Workshop,
+        // где SharedFileBindMouseHover может отсутствовать.
+        if ($itemsById === []) {
+            $idPatterns = [
+                '/(?:\\\\"|")publishedfileid(?:\\\\"|")\s*:\s*(?:\\\\"|")?(\d+)(?:\\\\"|")?/i',
+                '/filedetails\/\?id=(\d+)/i',
+            ];
+
+            foreach ($idPatterns as $idPattern) {
+                if (preg_match_all($idPattern, $html, $idMatches) !== false) {
+                    foreach ($idMatches[1] as $id) {
+                        $id = trim((string) $id);
+                        if ($id === '') {
+                            continue;
+                        }
+
+                        // Название с browse-страницы не критично для классификации,
+                        // т.к. далее используется title/description из details API.
+                        if (!isset($itemsById[$id])) {
+                            $itemsById[$id] = [
+                                'id' => $id,
+                                'name' => 'Workshop Item ' . $id,
+                            ];
+                        }
+                    }
+                }
+
+                if ($itemsById !== []) {
+                    break;
+                }
             }
         }
 

@@ -246,7 +246,7 @@ input[type="search"] {
 .list-head,
 .list-item {
   display: grid;
-  grid-template-columns: 1fr 180px 90px;
+  grid-template-columns: 1fr 180px 90px minmax(280px, 1.2fr);
   gap: 12px;
   align-items: center;
 }
@@ -273,6 +273,16 @@ input[type="search"] {
   font-weight: 700;
 }
 
+.map-name-wrap {
+  display: grid;
+  gap: 6px;
+}
+
+.map-reason {
+  color: #8f1e1e;
+  font-size: 12px;
+}
+
 .map-id {
   color: var(--muted);
   font-family: Consolas, monospace;
@@ -281,6 +291,31 @@ input[type="search"] {
 .map-link a {
   color: var(--accent);
   text-decoration: none;
+}
+
+.row-actions {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.move-select {
+  min-width: 130px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #fffefb;
+  font: inherit;
+}
+
+.action-btn {
+  padding: 8px 12px;
+}
+
+.action-danger {
+  border-color: #d8b8b8;
+  color: #8f1e1e;
 }
 
 .empty {
@@ -295,6 +330,10 @@ input[type="search"] {
 
   .list-item {
     grid-template-columns: 1fr;
+  }
+
+  .row-actions {
+    grid-template-columns: 1fr 1fr;
   }
 
   .map-id::before {

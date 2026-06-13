@@ -8,7 +8,22 @@ $storage = new JsonStorage();
 $type = $_GET['type'] ?? 'maps';
 $query = trim((string) ($_GET['q'] ?? ''));
 
-$items = $type === 'review' ? $storage->loadReview() : $storage->loadMaps();
+switch ($type) {
+    case 'review':
+        $items = $storage->loadReview();
+        break;
+    case 'archived':
+        $items = $storage->loadArchived();
+        break;
+    case 'bugged':
+        $items = $storage->loadBugged();
+        break;
+    case 'maps':
+    default:
+        $items = $storage->loadMaps();
+        $type = 'maps';
+        break;
+}
 
 if ($query !== '') {
     $needle = mb_strtolower($query);
@@ -24,4 +39,3 @@ kf2_wsmc_send_json([
     'count' => count($items),
     'type' => $type,
 ]);
-

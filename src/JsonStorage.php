@@ -7,17 +7,24 @@ final class JsonStorage
     /**
      * @param array<int, array{id:string, name:string}> $maps
      * @param array<int, array{id:string, name:string}> $review
+     * @param null|array<int, array<string, mixed>> $archived
+     * @param null|array<int, array<string, mixed>> $bugged
      * @param array<string, mixed> $state
      */
-    public function saveAll(array $maps, array $review, array $state): void
+    public function saveAll(array $maps, array $review, array $state, ?array $archived = null, ?array $bugged = null): void
     {
         $dataDir = kf2_wsmc_root_path('data');
         if (!is_dir($dataDir) && !mkdir($dataDir, 0777, true) && !is_dir($dataDir)) {
             throw new RuntimeException('Failed to create data directory.');
         }
 
+        $archivedItems = $archived ?? $this->loadArchived();
+        $buggedItems = $bugged ?? $this->loadBugged();
+
         $this->writeJson(kf2_wsmc_data_path('maps.json'), $maps);
         $this->writeJson(kf2_wsmc_data_path('review.json'), $review);
+        $this->writeJson(kf2_wsmc_data_path('archived.json'), $archivedItems);
+        $this->writeJson(kf2_wsmc_data_path('bugged.json'), $buggedItems);
         $this->writeJson(kf2_wsmc_data_path('state.json'), $state);
     }
 
@@ -38,6 +45,22 @@ final class JsonStorage
     }
 
     /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function loadArchived(): array
+    {
+        return $this->loadList(kf2_wsmc_data_path('archived.json'));
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function loadBugged(): array
+    {
+        return $this->loadList(kf2_wsmc_data_path('bugged.json'));
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function loadState(): array
@@ -51,6 +74,8 @@ final class JsonStorage
                 'detailed_items_analyzed' => 0,
                 'maps_count' => 0,
                 'review_count' => 0,
+                'archived_count' => 0,
+                'bugged_count' => 0,
                 'browse_pages_processed' => 0,
                 'browse_pages_limit' => null,
                 'requested_max_browse_pages' => null,

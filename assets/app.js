@@ -5,6 +5,8 @@ const state = {
   pollingTimer: null,
 };
 
+const listTypes = ["maps", "review", "archived", "bugged"];
+
 const els = {
   status: document.querySelector("[data-role=status]"),
   refresh: document.querySelector("[data-action=refresh]"),
@@ -25,6 +27,8 @@ const els = {
     total: document.querySelector("[data-role=count-total]"),
     maps: document.querySelector("[data-role=count-maps]"),
     review: document.querySelector("[data-role=count-review]"),
+    archived: document.querySelector("[data-role=count-archived]"),
+    bugged: document.querySelector("[data-role=count-bugged]"),
     pages: document.querySelector("[data-role=count-pages]"),
     lastRun: document.querySelector("[data-role=last-run]"),
   },
@@ -205,6 +209,8 @@ function renderState(payload, { keepMessage = false } = {}) {
   els.counts.total.textContent = data.workshop_total_items || 0;
   els.counts.maps.textContent = data.maps_count || 0;
   els.counts.review.textContent = data.review_count || 0;
+  els.counts.archived.textContent = data.archived_count || 0;
+  els.counts.bugged.textContent = data.bugged_count || 0;
   els.counts.pages.textContent = data.browse_pages_processed || 0;
   els.counts.lastRun.textContent = formatDate(data.last_run_at);
 
@@ -245,14 +251,75 @@ function renderItems(items) {
 
   els.list.innerHTML = items.map((item) => {
     const link = `https://steamcommunity.com/sharedfiles/filedetails/?id=${encodeURIComponent(item.id)}`;
+    const moveOptions = listTypes
+      .filter((type) => type !== state.activeType)
+      .map((type) => `<option value="${type}">${escapeHtml(type)}</option>`)
+      .join("");
+
+    const reasonLine = state.activeType === "bugged" && item.reason
+      ? `<div class="map-reason">Reason: ${escapeHtml(item.reason)}</div>`
+      : "";
+
     return `
       <div class="list-item">
-        <div class="map-name">${escapeHtml(item.name)}</div>
+        <div class="map-name-wrap">
+          <div class="map-name">${escapeHtml(item.name)}</div>
+          ${reasonLine}
+        </div>
         <div class="map-id">${escapeHtml(item.id)}</div>
         <div class="map-link"><a href="${link}" target="_blank" rel="noreferrer">Open</a></div>
+        <div class="row-actions">
+          <button class="button button-secondary action-btn" data-action="copy-id" data-id="${escapeHtml(item.id)}">Copy ID</button>
+          <select class="move-select" data-role="move-target" data-id="${escapeHtml(item.id)}">
+            ${moveOptions}
+          </select>
+          <button class="button button-secondary action-btn" data-action="move" data-id="${escapeHtml(item.id)}">Move</button>
+          <button class="button button-secondary action-btn action-danger" data-action="delete" data-id="${escapeHtml(item.id)}">Delete</button>
+        </div>
       </div>
     `;
   }).join("");
+}
+
+async function updateListItem(action, { id, from, to = "", reason = "" }) {
+  const body = new URLSearchParams();
+  body.set("action", action);
+  body.set("id", id);
+  body.set("from", from);
+  if (to) {
+    body.set("to", to);
+  }
+  if (reason) {
+    body.set("reason", reason);
+  }
+
+  await fetchJson("./api/lists.php", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+    },
+    body: body.toString(),
+  });
+
+  await loadState({ keepMessage: true });
+  await loadList();
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "readonly");
+  ta.style.position = "fixed";
+  ta.style.left = "-9999px";
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand("copy");
+  document.body.removeChild(ta);
 }
 
 function escapeHtml(value) {
@@ -374,6 +441,68 @@ els.search.addEventListener("input", (event) => {
 for (const tab of els.tabs) {
   tab.addEventListener("click", () => selectTab(tab.dataset.type));
 }
+
+els.list.addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-action]");
+  if (!button) {
+    return;
+  }
+
+  const action = button.dataset.action;
+  const id = (button.dataset.id || "").trim();
+  if (!id) {
+    return;
+  }
+
+  try {
+    if (action === "copy-id") {
+      await copyTextToClipboard(id);
+      setStatus(`ID copied: ${id}`, "ok");
+      return;
+    }
+
+    if (action === "delete") {
+      if (!window.confirm(`Delete map ${id} from ${state.activeType}?`)) {
+        return;
+      }
+
+      await updateListItem("delete", {
+        id,
+        from: state.activeType,
+      });
+      setStatus(`Map ${id} deleted from ${state.activeType}.`, "ok");
+      return;
+    }
+
+    if (action === "move") {
+      const row = button.closest(".list-item");
+      const select = row ? row.querySelector(`[data-role=move-target][data-id="${CSS.escape(id)}"]`) : null;
+      const targetType = select ? String(select.value || "").trim() : "";
+
+      if (!targetType) {
+        throw new Error("Select target list before moving.");
+      }
+
+      let reason = "";
+      if (targetType === "bugged") {
+        reason = String(window.prompt("Enter reason for moving map to bugged list:", "") || "").trim();
+        if (!reason) {
+          throw new Error("Reason is required for bugged list.");
+        }
+      }
+
+      await updateListItem("move", {
+        id,
+        from: state.activeType,
+        to: targetType,
+        reason,
+      });
+      setStatus(`Map ${id} moved from ${state.activeType} to ${targetType}.`, "ok");
+    }
+  } catch (error) {
+    setStatus(error.message, "error");
+  }
+});
 
 Promise.all([loadState(), loadList()]).catch((error) => {
   setStatus(error.message, "error");

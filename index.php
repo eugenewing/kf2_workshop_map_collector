@@ -64,6 +64,14 @@ $jsVersion = is_file(__DIR__ . '/assets/app.js') ? (string) filemtime(__DIR__ . 
                 <div class="stat-value" data-role="count-review"><?php echo (int) ($state['review_count'] ?? 0); ?></div>
             </div>
             <div class="stat">
+                <div class="stat-label">Archived Maps</div>
+                <div class="stat-value" data-role="count-archived"><?php echo (int) ($state['archived_count'] ?? 0); ?></div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Bugged Maps</div>
+                <div class="stat-value" data-role="count-bugged"><?php echo (int) ($state['bugged_count'] ?? 0); ?></div>
+            </div>
+            <div class="stat">
                 <div class="stat-label">Browse Pages</div>
                 <div class="stat-value" data-role="count-pages"><?php echo (int) ($state['browse_pages_processed'] ?? 0); ?></div>
             </div>
@@ -78,6 +86,8 @@ $jsVersion = is_file(__DIR__ . '/assets/app.js') ? (string) filemtime(__DIR__ . 
                 <div class="tabs">
                     <button class="tab active" data-type="maps">Confident Maps</button>
                     <button class="tab" data-type="review">Review List</button>
+                    <button class="tab" data-type="archived">Archived</button>
+                    <button class="tab" data-type="bugged">Bugged</button>
                 </div>
                 <div class="search-row">
                     <input type="search" placeholder="Search by map name or workshop id" data-role="search" aria-label="Search maps">
@@ -89,6 +99,7 @@ $jsVersion = is_file(__DIR__ . '/assets/app.js') ? (string) filemtime(__DIR__ . 
                     <div>Name</div>
                     <div>Workshop ID</div>
                     <div>Steam</div>
+                    <div>Actions</div>
                 </div>
                 <div data-role="list">
                     <div class="empty">Loading data...</div>

@@ -1,0 +1,235 @@
+{
+  "schema_version": "1.0.0",
+  "source_of_truth": {
+    "file": "src/SteamWorkshopCollector.php",
+    "method": "analyzeCandidate"
+  },
+  "purpose": "Документирует текущую rule-based эвристику определения KF2 карт через взвешенные сигналы.",
+  "normalization": {
+    "steps": [
+      "normalizeText(title)",
+      "normalizeText(description)",
+      "stripNonContentNoise(rawText)",
+      "mb_strtolower(cleanedText)"
+    ],
+    "notes": [
+      "Ссылки и часть служебного шума удаляются перед оценкой.",
+      "Некоторые проверки выполняются по rawText, чтобы ловить mutator-команды."
+    ]
+  },
+  "signals": {
+    "positive": [
+      {
+        "id": "hasCdeditInTitle",
+        "pattern": "\\bcdedit\\b",
+        "scope": "title",
+        "weight": 4,
+        "description": "Маркер, часто встречающийся в контенте карт/портов."
+      },
+      {
+        "id": "hasMapNameKf",
+        "pattern": "\\bmapname\\s*=\\s*kf-[a-z0-9]",
+        "scope": "text",
+        "weight": 8,
+        "description": "Сильный признак карты по явному mapname."
+      },
+      {
+        "id": "hasKfmFileMarker",
+        "pattern": "\\.kfm\\b",
+        "scope": "text",
+        "weight": 5,
+        "description": "Индикатор файлов карты/контента карты."
+      },
+      {
+        "id": "hasFileNameMarker",
+        "pattern": "\\bfile\\s*name\\s*:",
+        "scope": "text",
+        "weight": 3,
+        "description": "Косвенный признак описания файлов карты."
+      },
+      {
+        "id": "hasMapNameMarker",
+        "pattern": "\\bmap\\s*name\\s*:",
+        "scope": "text",
+        "weight": 4,
+        "description": "Явный признак описания карты."
+      },
+      {
+        "id": "hasOriginalMapMarker",
+        "pattern": "\\boriginal\\s+map\\s*:",
+        "scope": "text",
+        "weight": 5,
+        "description": "Признак ремейка/порта карты."
+      },
+      {
+        "id": "hasTitleKfPrefix",
+        "pattern": "^\\s*kf-",
+        "scope": "title",
+        "weight": 6,
+        "description": "Сильный префикс карты в названии."
+      },
+      {
+        "id": "hasAnyKfPrefix",
+        "pattern": "\\bkf-[a-z0-9]",
+        "scope": "text",
+        "weight": 4,
+        "description": "Признак KF-карты в тексте."
+      },
+      {
+        "id": "hasKf1Reference",
+        "pattern": "\\bkf1(?:-|\\b)|\\bkilling floor 1\\b",
+        "scope": "text",
+        "weight": 3,
+        "description": "Признак портирования KF1 карт."
+      },
+      {
+        "id": "hasMapsTag",
+        "pattern": "tag=maps",
+        "scope": "tags",
+        "weight": 3,
+        "description": "Системный workshop-тег карты."
+      },
+      {
+        "id": "hasMapPhrase",
+        "pattern": "(fun|custom|small|medium|large|objective|holdout|survival|arena|slaughter|progression|defensive|playable|coop) map|this map|a map",
+        "scope": "text",
+        "weight": 3,
+        "description": "Языковой паттерн map-контента."
+      },
+      {
+        "id": "hasMapWord",
+        "pattern": "\\bmap\\b|\\bmaps\\b",
+        "scope": "text",
+        "weight": 2,
+        "description": "Слабый общий признак."
+      },
+      {
+        "id": "hasGameplayTerms",
+        "pattern": "\\btrader\\b|\\bzed\\b|\\bwaves?\\b|\\bspawn(?:s|ed|ing)?\\b|\\bendless\\b|\\bobjective\\b|\\bholdout\\b|\\bsurvival\\b",
+        "scope": "text",
+        "weight": 2,
+        "description": "Геймплейные термины режима карты."
+      },
+      {
+        "id": "hasRemakeSignal",
+        "pattern": "\\bremake\\b|\\bported\\b|\\bport\\b",
+        "scope": "text",
+        "weight": 1,
+        "conditional_on": [
+          "hasAnyKfPrefix || hasKf1Reference || hasMapWord"
+        ],
+        "description": "Дополнительный балл за ремейк при map-like контексте."
+      }
+    ],
+    "negative": [
+      {
+        "id": "hasAudioTerms",
+        "pattern": "\\bmusic\\b|\\bsoundtrack\\b|\\baudio\\b|\\bsong\\b|\\bost\\b|\\bmenu music\\b|\\bambience\\b|\\bambient music\\b",
+        "scope": "text",
+        "weight": -5,
+        "description": "Контент, похожий на аудио-моды, не карты."
+      },
+      {
+        "id": "hasCosmeticTerms",
+        "pattern": "\\bskin\\b|\\bcosmetic\\b|\\bcharacter\\b|\\bmodel\\b|\\bvoice pack\\b|\\bannouncer\\b|\\bhud\\b|\\bui\\b",
+        "scope": "text",
+        "weight": -5,
+        "description": "Косметический контент, обычно не карта."
+      },
+      {
+        "id": "hasModOnlyTerms",
+        "pattern": "\\bmutator\\b|\\bgameplay mod\\b|\\boverhaul\\b|\\bserver tool\\b|\\bplugin\\b|\\bweapon pack\\b",
+        "scope": "text",
+        "weight": -4,
+        "conditional_on": [
+          "!hasMapNameKf",
+          "!hasTitleKfPrefix"
+        ],
+        "description": "Снижает score для pure-mod контента без сильных map-маркеров."
+      },
+      {
+        "id": "hasGamemodeTerms",
+        "pattern": "\\bweekly\\s+outbreak\\b|\\boutbreak\\b|\\bgame\\s*mode\\b|\\bgamemode\\b|\\bgamemodes\\b|\\bmode\\s+only\\b",
+        "scope": "text",
+        "weight": -6,
+        "description": "Признак режима/мутатора, не конкретной карты."
+      },
+      {
+        "id": "hasGamemodeTag",
+        "pattern": "tag in [gamemode, gamemodes, outbreak, weekly outbreak]",
+        "scope": "tags",
+        "weight": -6,
+        "description": "Workshop-теги режима снижают вероятность карты."
+      },
+      {
+        "id": "hasModeInText",
+        "pattern": "\\bmode\\b|[a-z0-9]+modes?\\b",
+        "scope": "text",
+        "weight": -3,
+        "conditional_on": [
+          "!hasStrongMapMarkers"
+        ],
+        "description": "Снижает score при mode-контексте без сильных map-маркеров."
+      },
+      {
+        "id": "hasModReferenceTerms",
+        "pattern": "\\bthis\\s+mod\\b|\\bmodification\\b|\\bmodifications\\b",
+        "scope": "text",
+        "weight": -3,
+        "conditional_on": [
+          "!hasMapNameKf",
+          "!hasMapPhrase",
+          "!hasMapsTag"
+        ],
+        "description": "Снижает score для мод-описаний без map-сигналов."
+      },
+      {
+        "id": "hasMutatorCommand",
+        "pattern": "\\?mutator=|\\bmutator=",
+        "scope": "rawText",
+        "weight": -6,
+        "description": "Явный признак mutator launch command."
+      },
+      {
+        "id": "hasUtilityTerms",
+        "pattern": "\\bradar\\b|\\bcrosshair\\b|\\bwhitelist(?:ed)?\\b|\\btournament\\b",
+        "scope": "text",
+        "weight": -4,
+        "conditional_on": [
+          "!hasMapsTag",
+          "!hasMapWord",
+          "!hasMapPhrase"
+        ],
+        "description": "Служебный/утилитарный контент без map-контекста."
+      }
+    ]
+  },
+  "derived_flags": {
+    "hasStrongMapMarkers": "hasMapNameKf || hasKfmFileMarker || hasFileNameMarker || hasMapNameMarker || hasOriginalMapMarker",
+    "hasStrongNegative": "hasAudioTerms || hasCosmeticTerms || hasGamemodeTerms || hasGamemodeTag",
+    "positiveSignals": "Количество true в ключевых позитивных сигналах"
+  },
+  "decision_rules": {
+    "is_likely_map": [
+      "hasMapNameKf && !hasStrongNegative",
+      "score >= 7 && positiveSignals >= 2",
+      "score >= 5 && (hasTitleKfPrefix || hasAnyKfPrefix) && (hasMapWord || hasMapPhrase || hasGameplayTerms)"
+    ],
+    "is_suspicious": [
+      "!is_likely_map",
+      "!hasStrongNegative",
+      "(score >= 3 && positiveSignals >= 2) || ((hasMapWord || hasMapPhrase) && (hasMapsTag || hasGameplayTerms || hasKf1Reference)) || ((hasTitleKfPrefix || hasAnyKfPrefix) && score >= 2)"
+    ]
+  },
+  "output_mapping": {
+    "maps": "is_likely_map === true",
+    "review": "is_suspicious === true",
+    "drop": "иначе item не попадает в итоговые списки"
+  },
+  "limitations": [
+    "Rule-based логика чувствительна к формулировкам в title/description/tags.",
+    "Возможны false positive и false negative.",
+    "При изменении regex/весов необходимо синхронизировать этот файл с кодом."
+  ]
+}
+
