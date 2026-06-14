@@ -5,7 +5,7 @@ const state = {
   pollingTimer: null,
 };
 
-const listTypes = ["maps", "review", "archived", "bugged"];
+const listTypes = ["featured", "archived", "ignored", "bugged", "maps", "review"];
 
 const els = {
   status: document.querySelector("[data-role=status]"),
@@ -29,6 +29,8 @@ const els = {
     review: document.querySelector("[data-role=count-review]"),
     archived: document.querySelector("[data-role=count-archived]"),
     bugged: document.querySelector("[data-role=count-bugged]"),
+    ignored: document.querySelector("[data-role=count-ignored]"),
+    featured: document.querySelector("[data-role=count-featured]"),
     pages: document.querySelector("[data-role=count-pages]"),
     lastRun: document.querySelector("[data-role=last-run]"),
   },
@@ -211,6 +213,8 @@ function renderState(payload, { keepMessage = false } = {}) {
   els.counts.review.textContent = data.review_count || 0;
   els.counts.archived.textContent = data.archived_count || 0;
   els.counts.bugged.textContent = data.bugged_count || 0;
+  els.counts.ignored.textContent = data.ignored_count || 0;
+  els.counts.featured.textContent = data.featured_count || 0;
   els.counts.pages.textContent = data.browse_pages_processed || 0;
   els.counts.lastRun.textContent = formatDate(data.last_run_at);
 
@@ -401,7 +405,7 @@ async function refreshWorkshopData() {
 }
 
 async function resetWorkshopData() {
-  if (!window.confirm("Reset parsed data (maps, review, and state)?")) {
+  if (!window.confirm("Reset parsed data (maps, review, archived, bugged, ignored, featured, and state)?")) {
     return;
   }
 

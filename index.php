@@ -72,6 +72,14 @@ $jsVersion = is_file(__DIR__ . '/assets/app.js') ? (string) filemtime(__DIR__ . 
                 <div class="stat-value" data-role="count-bugged"><?php echo (int) ($state['bugged_count'] ?? 0); ?></div>
             </div>
             <div class="stat">
+                <div class="stat-label">Ignored Items</div>
+                <div class="stat-value" data-role="count-ignored"><?php echo (int) ($state['ignored_count'] ?? 0); ?></div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Featured Maps</div>
+                <div class="stat-value" data-role="count-featured"><?php echo (int) ($state['featured_count'] ?? 0); ?></div>
+            </div>
+            <div class="stat">
                 <div class="stat-label">Browse Pages</div>
                 <div class="stat-value" data-role="count-pages"><?php echo (int) ($state['browse_pages_processed'] ?? 0); ?></div>
             </div>
@@ -88,6 +96,8 @@ $jsVersion = is_file(__DIR__ . '/assets/app.js') ? (string) filemtime(__DIR__ . 
                     <button class="tab" data-type="review">Review List</button>
                     <button class="tab" data-type="archived">Archived</button>
                     <button class="tab" data-type="bugged">Bugged</button>
+                    <button class="tab" data-type="ignored">Ignored</button>
+                    <button class="tab" data-type="featured">Featured</button>
                 </div>
                 <div class="search-row">
                     <input type="search" placeholder="Search by map name or workshop id" data-role="search" aria-label="Search maps">

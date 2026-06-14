@@ -46,6 +46,8 @@ $maxBrowsePages = $maxPagesRaw === null || $maxPagesRaw === ''
 $storage = new JsonStorage();
 $archivedItems = $storage->loadArchived();
 $buggedItems = $storage->loadBugged();
+$ignoredItems = $storage->loadIgnored();
+$featuredItems = $storage->loadFeatured();
 
 try {
     $initialState = array_merge($storage->loadState(), [
@@ -57,6 +59,8 @@ try {
         'review_count' => 0,
         'archived_count' => count($archivedItems),
         'bugged_count' => count($buggedItems),
+        'ignored_count' => count($ignoredItems),
+        'featured_count' => count($featuredItems),
         'browse_pages_processed' => 0,
         'browse_pages_limit' => null,
         'requested_max_browse_pages' => $maxBrowsePages,
@@ -69,13 +73,15 @@ try {
         $storage->loadReview(),
         $initialState,
         $archivedItems,
-        $buggedItems
+        $buggedItems,
+        $ignoredItems,
+        $featuredItems
     );
 
     $collector = new SteamWorkshopCollector();
     $progressState = $initialState;
 
-    $result = $collector->collectAll($maxBrowsePages, $delayMs, static function (array $progress) use ($storage, &$progressState, $archivedItems, $buggedItems): void {
+    $result = $collector->collectAll($maxBrowsePages, $delayMs, static function (array $progress) use ($storage, &$progressState, $archivedItems, $buggedItems, $ignoredItems, $featuredItems): void {
         $progressState = array_merge($progressState, $progress, [
             'status' => 'running',
             'error' => null,
@@ -86,7 +92,9 @@ try {
             $storage->loadReview(),
             $progressState,
             $archivedItems,
-            $buggedItems
+            $buggedItems,
+            $ignoredItems,
+            $featuredItems
         );
     });
 
@@ -94,9 +102,11 @@ try {
         'requested_max_browse_pages' => $maxBrowsePages,
         'archived_count' => count($archivedItems),
         'bugged_count' => count($buggedItems),
+        'ignored_count' => count($ignoredItems),
+        'featured_count' => count($featuredItems),
     ]);
 
-    $storage->saveAll($result['maps'], $result['review'], $finalState, $archivedItems, $buggedItems);
+    $storage->saveAll($result['maps'], $result['review'], $finalState, $archivedItems, $buggedItems, $ignoredItems, $featuredItems);
 
     kf2_wsmc_send_json([
         'ok' => true,
@@ -110,7 +120,7 @@ try {
         'last_run_at' => gmdate('c'),
     ]);
 
-    $storage->saveAll($storage->loadMaps(), $storage->loadReview(), $state, $archivedItems, $buggedItems);
+    $storage->saveAll($storage->loadMaps(), $storage->loadReview(), $state, $archivedItems, $buggedItems, $ignoredItems, $featuredItems);
 
     kf2_wsmc_send_json([
         'ok' => false,

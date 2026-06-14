@@ -11,6 +11,8 @@
   - **review** — пограничные кандидаты,
   - **archived** — ручной архив,
   - **bugged** — ручной список проблемных карт (с обязательной причиной),
+  - **ignored** — ручной список элементов, ошибочно попавших в выборку карт,
+  - **featured** — ручной список подтверждённых пользователем карт,
 - сохраняет списки и состояние сканирования в JSON,
 - отдаёт данные на фронтенд через HTTP API.
 
@@ -32,7 +34,7 @@
 - `index.php` — основная страница UI
 - `api/`
   - `refresh.php` — запуск полного/ограниченного сканирования
-  - `maps.php` — выдача списков `maps|review|archived|bugged` + поиск
+  - `maps.php` — выдача списков `maps|review|archived|bugged|ignored|featured` + поиск
   - `lists.php` — ручные операции со списками (`move`, `delete`)
   - `state.php` — выдача текущего/последнего состояния
   - `reset.php` — сброс JSON-данных к начальному состоянию
@@ -46,7 +48,7 @@
   - `app.js` — фронтенд-логика (refresh/reset/polling/search/move/delete/copy-id/progress)
   - `app.css` — стили
 - `data/`
-  - `maps.json`, `review.json`, `archived.json`, `bugged.json`, `state.json` — генерируемые файлы (игнорируются в Git)
+  - `maps.json`, `review.json`, `archived.json`, `bugged.json`, `ignored.json`, `featured.json`, `state.json` — генерируемые файлы (игнорируются в Git)
 - `HEURISTICS_SCHEMA.json` — документированная схема текущих эвристик
 
 ---
@@ -66,19 +68,19 @@
    - в `review`,
    - либо отбрасывается.
 5. Результаты сортируются, сохраняются в JSON, статус переводится в `done`.
-6. Пользовательские списки `archived` и `bugged` сохраняются между запусками refresh.
+6. Пользовательские списки `archived`, `bugged`, `ignored` и `featured` сохраняются между запусками refresh.
 
 ### 4.2 Просмотр и поиск
 
-- UI запрашивает `api/maps.php?type=maps|review|archived|bugged&q=...`.
+- UI запрашивает `api/maps.php?type=maps|review|archived|bugged|ignored|featured&q=...`.
 - Фильтрация по `name` и `id` делается на сервере.
 
 ### 4.3 Ручное управление списками
 
 Через `api/lists.php` и интерфейс доступны:
 
-- удаление элемента из любого из 4 списков,
-- перемещение элемента между любыми 4 списками,
+- удаление элемента из любого из 6 списков,
+- перемещение элемента между любыми 6 списками,
 - обязательный ввод `reason` при перемещении в `bugged`,
 - удаление `reason` при перемещении из `bugged` в другой список,
 - копирование `id` в буфер обмена для каждого элемента.
@@ -93,7 +95,7 @@
 
 ### 4.5 Сброс данных
 
-- `POST api/reset.php` очищает `maps/review/archived/bugged` и возвращает state к `idle`.
+- `POST api/reset.php` очищает `maps/review/archived/bugged/ignored/featured` и возвращает state к `idle`.
 
 ---
 
@@ -128,6 +130,8 @@
 - `maps.json`
 - `review.json`
 - `archived.json`
+- `ignored.json`
+- `featured.json`
 - `bugged.json` — для элементов в этом списке используется дополнительное обязательное поле:
 
 ```json
@@ -146,6 +150,8 @@
 - `review_count`
 - `archived_count`
 - `bugged_count`
+- `ignored_count`
+- `featured_count`
 - `browse_pages_processed`
 - `browse_pages_limit`
 - `requested_max_browse_pages`
@@ -158,11 +164,13 @@
 
 Классификация в `SteamWorkshopCollector::analyzeCandidate()` основана на взвешенных сигналах:
 
+
 - **Позитивные**: `kf-` префикс, `mapname=KF-...`, `.kfm`, map-related слова/теги, gameplay термины.
 - **Негативные**: audio/cosmetic/mod-only/gamemode сигналы, mutator-команды, utility-only контекст.
 - Итог: score + набор сигналов → `is_likely_map` или `is_suspicious`.
 
 Детальная формализация текущей эвристики поддерживается в `HEURISTICS_SCHEMA.json`.
+
 
 ---
 
@@ -183,7 +191,7 @@
    - серверный источник истины для состояния и списков.
 
 4. **Ручная валидация результатов через пользовательские списки**
-   - `archived` и `bugged` позволяют оператору контролировать качество и эксплуатационный статус карт,
+   - `archived`, `bugged`, `ignored` и `featured` позволяют оператору контролировать качество и эксплуатационный статус карт,
    - API move/delete даёт централизованный и простой механизм корректировки выборки.
 
 ---
@@ -214,6 +222,7 @@
 - Apache + PHP в XAMPP
 - Доступ к интернету к доменам Steam
 - Права записи в директорию `data/`
+
 - Желательно включённый `curl` в PHP (иначе fallback на stream)
 
 Деплой:
@@ -234,7 +243,7 @@
 {"state": {"status": "idle"}}
 ```
 
-### `GET api/maps.php?type=maps|review|archived|bugged&q=...`
+### `GET api/maps.php?type=maps|review|archived|bugged|ignored|featured&q=...`
 
 Ответ:
 
@@ -246,6 +255,7 @@
 
 Параметры:
 
+
 - `action`: `move|delete`
 - `id`: id элемента (обязательный)
 - `from`: исходный список (обязательный)
@@ -255,7 +265,7 @@
 Ответ при успехе:
 
 ```json
-{"ok": true, "state": {...}, "counts": {"maps": 0, "review": 0, "archived": 0, "bugged": 0}}
+{"ok": true, "state": {...}, "counts": {"maps": 0, "review": 0, "archived": 0, "bugged": 0, "ignored": 0, "featured": 0}}
 ```
 
 ### `POST api/refresh.php`
@@ -291,14 +301,17 @@
 
 1. Добавить блокировку от параллельных `refresh`.
 2. Вести журнал запусков/ошибок отдельно от `state.json`.
-3. Добавить списки `ignored` и `featured`.
-4. Реализовать сверку найденных элементов с пользовательскими списками до записи в `maps/review`.
-5. Добавить поддержку изображений для карт.
-6. Добавить функционал тегов для `featured`.
+3. Реализовать сверку найденных элементов с пользовательскими списками до записи в `maps/review`.
+4. Добавить поддержку изображений для карт.
+5. Добавить функционал тегов для `featured`.
 
 ---
 
 ## 13. Статус контекста
 
-Документ актуализирован по фактическому коду проекта и отражает состояние после внедрения 4 списков (`maps`, `review`, `archived`, `bugged`), ручного управления элементами через API/UI и JSON-схемы эвристики.
+Документ актуализирован по фактическому коду проекта и отражает состояние после внедрения 6 списков (`maps`, `review`, `archived`, `bugged`, `ignored`, `featured`), ручного управления элементами через API/UI и JSON-схемы эвристики.
+
+
+
+
 

@@ -15,11 +15,12 @@ $storage = new JsonStorage();
  */
 function kf2_wsmc_allowed_list_types(): array
 {
-    return ['maps', 'review', 'archived', 'bugged'];
+    return ['maps', 'review', 'archived', 'bugged', 'ignored', 'featured'];
 }
 
 function kf2_wsmc_find_item_index(array $items, string $id): int
 {
+
     foreach ($items as $index => $item) {
         if ((string) ($item['id'] ?? '') === $id) {
             return $index;
@@ -45,10 +46,13 @@ $lists = [
     'review' => $storage->loadReview(),
     'archived' => $storage->loadArchived(),
     'bugged' => $storage->loadBugged(),
+    'ignored' => $storage->loadIgnored(),
+    'featured' => $storage->loadFeatured(),
 ];
 
 if ($action === 'delete') {
     if (!in_array($fromType, $allowedTypes, true)) {
+
         kf2_wsmc_send_json(['error' => 'Invalid source list.'], 400);
     }
 
@@ -96,9 +100,11 @@ $state = array_merge($storage->loadState(), [
     'review_count' => count($lists['review']),
     'archived_count' => count($lists['archived']),
     'bugged_count' => count($lists['bugged']),
+    'ignored_count' => count($lists['ignored']),
+    'featured_count' => count($lists['featured']),
 ]);
 
-$storage->saveAll($lists['maps'], $lists['review'], $state, $lists['archived'], $lists['bugged']);
+$storage->saveAll($lists['maps'], $lists['review'], $state, $lists['archived'], $lists['bugged'], $lists['ignored'], $lists['featured']);
 
 kf2_wsmc_send_json([
     'ok' => true,
@@ -108,6 +114,11 @@ kf2_wsmc_send_json([
         'review' => count($lists['review']),
         'archived' => count($lists['archived']),
         'bugged' => count($lists['bugged']),
+        'ignored' => count($lists['ignored']),
+        'featured' => count($lists['featured']),
     ],
 ]);
+
+
+
 

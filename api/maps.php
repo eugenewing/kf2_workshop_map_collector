@@ -18,6 +18,12 @@ switch ($type) {
     case 'bugged':
         $items = $storage->loadBugged();
         break;
+    case 'ignored':
+        $items = $storage->loadIgnored();
+        break;
+    case 'featured':
+        $items = $storage->loadFeatured();
+        break;
     case 'maps':
     default:
         $items = $storage->loadMaps();

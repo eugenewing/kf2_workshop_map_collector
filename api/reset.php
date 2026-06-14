@@ -19,6 +19,8 @@ $state = [
     'review_count' => 0,
     'archived_count' => 0,
     'bugged_count' => 0,
+    'ignored_count' => 0,
+    'featured_count' => 0,
     'browse_pages_processed' => 0,
     'browse_pages_limit' => null,
     'requested_max_browse_pages' => null,
@@ -26,7 +28,7 @@ $state = [
     'error' => null,
 ];
 
-$storage->saveAll([], [], $state, [], []);
+$storage->saveAll([], [], $state, [], [], [], []);
 
 kf2_wsmc_send_json([
     'ok' => true,
