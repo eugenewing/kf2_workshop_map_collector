@@ -43,23 +43,43 @@ final class SteamWorkshopCollector
             ]);
         });
 
-        $maps = [];
+                $maps = [];
         $review = [];
+
+        // load storage to check for user lists presence
+        $storage = new JsonStorage();
+        $skippedTotal = 0;
+        $skippedBreakdown = [
+            'archived' => 0,
+            'bugged' => 0,
+            'ignored' => 0,
+            'featured' => 0,
+        ];
 
         $totalDetails = count($details);
         foreach ($details as $index => $item) {
             $analysis = $this->analyzeCandidate($item);
 
-            if ($analysis['is_likely_map']) {
-                $maps[] = [
-                    'id' => $analysis['id'],
-                    'name' => $analysis['name'],
-                ];
-            } elseif ($analysis['is_suspicious']) {
-                $review[] = [
-                    'id' => $analysis['id'],
-                    'name' => $analysis['name'],
-                ];
+            $id = $analysis['id'];
+            $foundIn = $id !== '' ? $storage->findInUserLists($id) : null;
+            if ($foundIn !== null) {
+                $skippedTotal++;
+                if (isset($skippedBreakdown[$foundIn])) {
+                    $skippedBreakdown[$foundIn]++;
+                }
+                // skip adding this item to maps/review as it's present in user lists
+            } else {
+                if ($analysis['is_likely_map']) {
+                    $maps[] = [
+                        'id' => $analysis['id'],
+                        'name' => $analysis['name'],
+                    ];
+                } elseif ($analysis['is_suspicious']) {
+                    $review[] = [
+                        'id' => $analysis['id'],
+                        'name' => $analysis['name'],
+                    ];
+                }
             }
 
             if (($index + 1) % 25 === 0 || $index + 1 === $totalDetails) {
@@ -68,6 +88,8 @@ final class SteamWorkshopCollector
                     'detailed_items_analyzed' => $index + 1,
                     'maps_count' => count($maps),
                     'review_count' => count($review),
+                    'skipped_user_items' => $skippedTotal,
+                    'skipped_user_items_breakdown' => $skippedBreakdown,
                 ]);
             }
         }
@@ -85,6 +107,8 @@ final class SteamWorkshopCollector
                 'detailed_items_analyzed' => count($details),
                 'maps_count' => count($maps),
                 'review_count' => count($review),
+                'skipped_user_items' => $skippedTotal,
+                'skipped_user_items_breakdown' => $skippedBreakdown,
                 'browse_pages_processed' => $browseResult['page_limit'],
                 'browse_pages_limit' => $browseResult['page_limit'],
                 'status' => 'ok',

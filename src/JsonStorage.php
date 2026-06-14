@@ -100,6 +100,13 @@ final class JsonStorage
                 'bugged_count' => 0,
                 'ignored_count' => 0,
                 'featured_count' => 0,
+                'skipped_user_items' => 0,
+                'skipped_user_items_breakdown' => [
+                    'archived' => 0,
+                    'bugged' => 0,
+                    'ignored' => 0,
+                    'featured' => 0,
+                ],
                 'browse_pages_processed' => 0,
                 'browse_pages_limit' => null,
                 'requested_max_browse_pages' => null,
@@ -137,4 +144,32 @@ final class JsonStorage
 
         file_put_contents($path, $json . PHP_EOL, LOCK_EX);
     }
+
+    /**
+     * Check whether given id exists in any of the four user lists.
+     * Returns the list name where the id was found (archived|bugged|ignored|featured) or null.
+     */
+    public function findInUserLists(string $id): ?string
+    {
+        $lists = [
+            'archived' => $this->loadArchived(),
+            'bugged' => $this->loadBugged(),
+            'ignored' => $this->loadIgnored(),
+            'featured' => $this->loadFeatured(),
+        ];
+
+        foreach ($lists as $name => $items) {
+            foreach ($items as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                if (isset($item['id']) && (string) $item['id'] === $id) {
+                    return $name;
+                }
+            }
+        }
+
+        return null;
+    }
 }
+
