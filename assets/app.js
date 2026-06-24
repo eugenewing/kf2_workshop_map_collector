@@ -146,11 +146,29 @@ function scheduleStatePolling() {
   }, 1500);
 }
 
+function toggleListControls(disabled) {
+  try {
+    const buttons = els.list.querySelectorAll('button[data-action]');
+    for (const btn of buttons) {
+      btn.disabled = disabled;
+    }
+    const selects = els.list.querySelectorAll('select.move-select');
+    for (const s of selects) {
+      s.disabled = disabled;
+    }
+  } catch (e) {
+    // ignore if list not rendered yet
+  }
+}
+
 function setRunning(running) {
   state.running = running;
   els.refresh.disabled = running;
   els.reset.disabled = running;
   els.refresh.textContent = running ? "Updating..." : "Refresh Workshop Data";
+
+  // disable in-list controls immediately to prevent user actions during refresh
+  toggleListControls(running);
 
   if (running) {
     scheduleStatePolling();
@@ -158,6 +176,7 @@ function setRunning(running) {
     clearPolling();
   }
 }
+
 
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, options);
@@ -257,12 +276,14 @@ function renderItems(items) {
     const link = `https://steamcommunity.com/sharedfiles/filedetails/?id=${encodeURIComponent(item.id)}`;
     const moveOptions = listTypes
       .filter((type) => type !== state.activeType)
-      .map((type) => `<option value="${type}">${escapeHtml(type)}</option>`)
+      .map((type) => `<option value="${type}">${escapeHtml(type)}</option>`) 
       .join("");
 
     const reasonLine = state.activeType === "bugged" && item.reason
       ? `<div class="map-reason">Reason: ${escapeHtml(item.reason)}</div>`
       : "";
+
+    const disabledAttr = state.running ? 'disabled' : '';
 
     return `
       <div class="list-item">
@@ -273,17 +294,21 @@ function renderItems(items) {
         <div class="map-id">${escapeHtml(item.id)}</div>
         <div class="map-link"><a href="${link}" target="_blank" rel="noreferrer">Open</a></div>
         <div class="row-actions">
-          <button class="button button-secondary action-btn" data-action="copy-id" data-id="${escapeHtml(item.id)}">Copy ID</button>
-          <select class="move-select" data-role="move-target" data-id="${escapeHtml(item.id)}">
+          <button class="button button-secondary action-btn" data-action="copy-id" data-id="${escapeHtml(item.id)}" ${disabledAttr}>Copy ID</button>
+          <select class="move-select" data-role="move-target" data-id="${escapeHtml(item.id)}" ${disabledAttr}>
             ${moveOptions}
           </select>
-          <button class="button button-secondary action-btn" data-action="move" data-id="${escapeHtml(item.id)}">Move</button>
-          <button class="button button-secondary action-btn action-danger" data-action="delete" data-id="${escapeHtml(item.id)}">Delete</button>
+          <button class="button button-secondary action-btn" data-action="move" data-id="${escapeHtml(item.id)}" ${disabledAttr}>Move</button>
+          <button class="button button-secondary action-btn action-danger" data-action="delete" data-id="${escapeHtml(item.id)}" ${disabledAttr}>Delete</button>
         </div>
       </div>
     `;
   }).join("");
+
+  // Ensure newly rendered controls reflect current running state
+  toggleListControls(state.running);
 }
+
 
 async function updateListItem(action, { id, from, to = "", reason = "" }) {
   const body = new URLSearchParams();

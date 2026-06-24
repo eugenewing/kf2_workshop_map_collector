@@ -50,6 +50,12 @@ $lists = [
     'featured' => $storage->loadFeatured(),
 ];
 
+// Prevent modifications while a refresh is running to avoid race conditions
+$currState = $storage->loadState();
+if ((string) ($currState['status'] ?? '') === 'running') {
+    kf2_wsmc_send_json(['error' => 'Cannot modify lists while a refresh is running.'], 409);
+}
+
 if ($action === 'delete') {
     if (!in_array($fromType, $allowedTypes, true)) {
 
